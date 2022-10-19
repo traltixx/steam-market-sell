@@ -1,6 +1,7 @@
 # My script for setting all items to marketplace.
 
-Set's all items from inventory to Steam marketplace.
+Sell some crates from the TF2 inventory to Steam marketplace.
+Crate names can be added to the sell_names variable in line 227
 
 ## Usage
 1. Install [Python](https://www.python.org).
@@ -19,34 +20,21 @@ Set's all items from inventory to Steam marketplace.
 python .\main.py <Steam username>
 Enter password for '<Steam username>': 
 Enter 2FA code: XXXXX
-Setting items to marketplace...
-         Steam Gems Gems
-                 Not marketable!
-         Booster Pack Warlock - Master of the Arcane Booster Pack
-                Price without fees as cents: 7
-                Set to marketplace!
-         Hollow Knight Foil Trading Card False Knight (Foil)
-                Price without fees as cents: 59
-                Set to marketplace!
-         Inscryption Trading Card The Woodcarver
-                Price without fees as cents: 8
-                Set to marketplace!
-         Inscryption Trading Card The Bone Lord
-                Price without fees as cents: 10
-                Set to marketplace!
-         Leisure Suit Larry - Wet Dreams Don't Dry Trading Card Anu
+Selling items to marketplace...
+Selling Unleash the Beast Cosmetic Case
                 Price without fees as cents: 2
                 Set to marketplace!
-         Marvel's Guardians of the Galaxy Trading Card Gamora (Trading Card)
-                Price without fees as cents: 10
+Selling Unleash the Beast Cosmetic Case
+                Price without fees as cents: 2
                 Set to marketplace!
-         Psychonauts in the Rhombus of Ruin Trading Card The Scientists' Findings
-                Price without fees as cents: 3
+Selling Unleash the Beast Cosmetic Case
+                Price without fees as cents: 2
                 Set to marketplace!
-         Resident Evil 2 Trading Card Key Visual 1
-                Price without fees as cents: 7
+Selling Unleash the Beast Cosmetic Case
+                Price without fees as cents: 2
                 Set to marketplace!
-         The Debut Collection Sticker Steam Blink
-                 Not marketable!
+Selling Unleash the Beast Cosmetic Case
+                Price without fees as cents: 2
+                Set to marketplace!
 All listed!
 ```
