@@ -8,7 +8,7 @@ from steam.webauth import WebAuth
 from requests import Session
 
 # Load JSON to dict.
-from json import loads
+from json import loads,dumps
 
 # Get ceil and floor mathemical functions.
 from math import ceil, floor
@@ -16,6 +16,9 @@ from math import ceil, floor
 # Handle regex.
 import re
 
+import random
+import time
+import traceback
 
 # Init argument parser.
 parser: ArgumentParser = ArgumentParser()
@@ -44,6 +47,8 @@ g_rgWalletInfo: dict = loads(
     )[0].split("=")[1]
 )
 
+
+SELL_MODE = True
 
 def price_without_fees_as_cents(with_fees: float, description: dict) -> int:
     """Price without fees as cents.
@@ -154,13 +159,32 @@ def CalculateAmountToSendForDesiredReceivedAmount(
         "amount": int(nAmountToSend),
     }
 
+def find_name(datadict,assetinfo):
+    result = ""
+    classid = assetinfo["classid"]
+    instanceid = assetinfo["instanceid"]
+    for description in datadict["descriptions"]:
+        if classid == description["classid"] and instanceid == description["instanceid"]:
+            return description["market_hash_name"]
+    return result
+
+def find_description(datadict,assetinfo):
+    result = {}
+    classid = assetinfo["classid"]
+    instanceid = assetinfo["instanceid"]
+    for description in datadict["descriptions"]:
+        if classid == description["classid"] and instanceid == description["instanceid"]:
+            return description
+    return result
 
 # Id for app "Steam".
-ID_APP: int = 753
+ID_APP: int = 440
 # Id for context "Community".
-ID_CONTEXT: int = 6
+ID_CONTEXT: int = 2
 # Language for data.
 LANGUAGE = "english"
+
+
 
 # Get inventory data.
 data: dict = session.get(
@@ -169,114 +193,124 @@ data: dict = session.get(
         "l": LANGUAGE,
     },
 ).json()
-del LANGUAGE
+#del LANGUAGE
 
 # Map classid to asset data.
-classid_to_asset: dict = {}
+classid_to_asset: dict = {}    
 for asset in data["assets"]:
     classid_to_asset[asset["classid"]] = asset
 
-# Country code for "Finland".
-COUNTRY: str = "FI"
+# Country code for "Australia".
+COUNTRY: str = "AU"
 
-# Currency "Euro".
-CURRENCY: int = 3
+# Currency "Australian Dollars".
+CURRENCY: int = 21
 # Regex to get float parts from currency string.
-CURRENCY_REGEX: str = r"^(?P<integer>[0-9])+,(?P<fractional>[0-9]{2})€$"
+#CURRENCY_REGEX: str = r"^(?P<integer>[0-9])+,(?P<fractional>[0-9]{2})€$" #euro regex
+CURRENCY_REGEX: str = r"^A\$ (?P<integer>[0-9])+\.(?P<fractional>[0-9]{2})" #aus dollar regex
 
 # Url for price overview.
 URL_PRICEOVERVIEW = f"{URL_STEAM_COMMINITY}/market/priceoverview/"
 
 # Id for session.
 ID_SESSION: str = user.session_id
-del user
+#del user
 
 # Url for selling item.
 URL_SELLITEM = f"{URL_STEAM_COMMINITY}/market/sellitem/"
 
 # Headers for selling item.
 HEADERS: dict = {"Referer": f"{URL_STEAM_COMMINITY}/profiles/{ID_STEAM}/inventory"}
-del URL_STEAM_COMMINITY
-del ID_STEAM
+#del URL_STEAM_COMMINITY
+#del ID_STEAM
 
-print("Setting items to marketplace...")
-# Loop descriptions.
-for description in data["descriptions"]:
-    # Print name.
-    print("\t", description["type"], description["name"])
+#change/modify this to the name of the things you want to sell
+sell_names = ["Winter 2020 War Paint Case","Unleash the Beast Cosmetic Case","Mann Co. Supply Munition Series #103","Mayflower Cosmetic Case","Mann Co. Supply Munition Series #90","Ghoulish Gains Case","Fall 2013 Gourd Crate Series #73","Mann Co. Strongbox Series #81","Fall 2013 Acorns Crate Series #72","Enchantment: Eternaween","Mann Co. Supply Crate Series #77","Mann Co. Supply Crate Series #75","Mann Co. Supply Crate Series #71","Mann Co. Supply Munition Series #82","Mann Co. Supply Munition Series #84","Mann Co. Supply Munition Series #90","Scream Fortress XII War Paint Case","Spooky Spoils Case","Summer 2019 Cosmetic Case","Scream Fortress XIV War Paint Case","Wicked Windfall Case"]
 
-    # Was not marketable
-    if description["marketable"] != 1:
-        print("\t\t Not marketable!")
-        # so skip.
-        continue
+selling = []
+# Loop assets.
+pause = random.randint(1,5) # we want to pause to not overload steam and not trigger any of their automated systems
+print("Selling items to marketplace...in "+str(pause)+" seconds")
+for asset in data["assets"]:
+    itemname = find_name(data,asset)
+    if itemname in sell_names:
+        print("Selling "+itemname)
+        time.sleep(pause)
+        description = find_description(data,asset)
 
-    # Get asset data for classid.
-    asset: dict = classid_to_asset[description["classid"]]
+        # Get priceoverview for item.
+        priceoverview: dict = session.get(
+            URL_PRICEOVERVIEW,
+            params={
+                "country": COUNTRY,
+                "currency": CURRENCY,
+                "appid": ID_APP,
+                "market_hash_name": itemname,
+            },
+        ).json()     
 
-    # Get priceoverview for item.
-    priceoverview: dict = session.get(
-        URL_PRICEOVERVIEW,
-        params={
-            "country": COUNTRY,
-            "currency": CURRENCY,
-            "appid": ID_APP,
-            "market_hash_name": description["market_hash_name"],
-        },
-    ).json()
+        # Getting priceoverview failed.
+        if "success" not in priceoverview or not priceoverview["success"]:
+            raise Exception("priceoverview failed!", priceoverview)
 
-    # Getting priceoverview failed.
-    if "success" not in priceoverview or not priceoverview["success"]:
-        raise Exception("priceoverview failed!", priceoverview)
+        #print(priceoverview)
+        # Get integer and fractional from currency string.
+        parts = re.search(CURRENCY_REGEX, priceoverview["lowest_price"])
+        #print(parts)
+        del priceoverview
+        integer: str = parts.group("integer")
+        fractional: str = parts.group("fractional")
+        del parts
 
-    # Get integer and fractional from currency string.
-    parts = re.search(CURRENCY_REGEX, priceoverview["lowest_price"])
-    del priceoverview
-    integer: str = parts.group("integer")
-    fractional: str = parts.group("fractional")
-    del parts
+        # Generate price from integer and factorional.
+        price: float = float(f"{integer}.{fractional}")
+        del integer
+        del fractional
 
-    # Generate price from integer and factorional.
-    price: float = float(f"{integer}.{fractional}")
-    del integer
-    del fractional
+        # If price was 0 or less
+        if price <= 0.00:
+            print("\t\tPrice was 0 or less!")
+            # move to next.
+            continue
 
-    # If price was 0 or less
-    if price <= 0.00:
-        print("\t\tPrice was 0 or less!")
-        # move to next.
-        continue
+        # Get price without fees as cents.
+        price_without_fees_cents = price_without_fees_as_cents(price, description)
+        print(
+            "\t\tPrice without fees as cents:",
+            price_without_fees_cents,
+        )
+        del description
+        del price
+        
 
-    # Get price without fees as cents.
-    price_without_fees_cents = price_without_fees_as_cents(price, description)
-    print(
-        "\t\tPrice without fees as cents:",
-        price_without_fees_cents,
-    )
-    del description
-    del price
+        # Sell item.
+        if SELL_MODE:
+            try:
+                sellitem: dict = session.post(
+                    URL_SELLITEM,
+                    data={
+                        "sessionid": ID_SESSION,
+                        "appid": ID_APP,
+                        "contextid": ID_CONTEXT,
+                        "assetid": asset["assetid"],
+                        "amount": asset["amount"],
+                        "price": price_without_fees_cents,
+                    },
+                    headers=HEADERS,
+                ).json()
+                del asset
+                del price_without_fees_cents
 
-    # Sell item.
-    sellitem: dict = session.post(
-        URL_SELLITEM,
-        data={
-            "sessionid": ID_SESSION,
-            "appid": ID_APP,
-            "contextid": ID_CONTEXT,
-            "assetid": asset["assetid"],
-            "amount": asset["amount"],
-            "price": price_without_fees_cents,
-        },
-        headers=HEADERS,
-    ).json()
-    del asset
-    del price_without_fees_cents
-
-    # Check if sale succeeded.
-    if "success" not in sellitem or not sellitem["success"]:
-        raise Exception("sellitem failed!", sellitem)
-    del sellitem
-    print("\t\tSet to marketplace!")
+                # Check if sale succeeded.
+                if "success" not in sellitem or not sellitem["success"]:
+                    raise Exception("sellitem failed!", sellitem)
+                del sellitem
+                print("\t\tSet to marketplace!")
+            except:
+                print(traceback.format_exc())
+                
+                
+                
 del session
 del g_rgWalletInfo
 del ID_APP
